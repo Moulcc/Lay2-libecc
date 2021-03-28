@@ -38,8 +38,14 @@
  * we need to get basic types: (uint*_t), NULL, etc. You can see below
  * (i.e. under #else) what is precisely needed.
  */
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
+
+#define UINT8_C(c) ((uint8_t)(c##UL))
+#define UINT16_C(c) ((uint16_t)(c##UL))
+#define UINT32_C(c) ((uint32_t)(c##UL))
+#define UINT64_C(c) (c##ULL)
+
 #else /* WITH_STDLIB */
 
 /*
@@ -89,13 +95,13 @@ typedef unsigned long long uint64_t;
  * if it is provided
  */
 #ifdef __SIZEOF_INT__
-#if(__SIZEOF_INT__ == 2)
+#if (__SIZEOF_INT__ == 2)
 typedef unsigned long uint32_t;
 #else
 typedef unsigned int uint32_t;
 #endif /* (__SIZEOF_INT__ == 2) */
 #else
-#if(WORDSIZE == 16)
+#if (WORDSIZE == 16)
 /* The user has provided WORDSIZE=16, so we guess that
  * we have LP32 or ILP32: a long type would be 32-bit.
  */
@@ -108,14 +114,14 @@ typedef unsigned int uint32_t;
 typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
 /* Useful macros for our new defined types */
-#define UINT8_MAX  (0xff)
+#define UINT8_MAX (0xff)
 #define UINT16_MAX (0xffff)
 #define UINT32_MAX (0xffffffff)
 #define UINT64_MAX (0xffffffffffffffffULL)
-#define UINT8_C(c) ((uint8_t)(c ## UL))
-#define UINT16_C(c) ((uint16_t)(c ## UL))
-#define UINT32_C(c) ((uint32_t)(c ## UL))
-#define UINT64_C(c) (c ## ULL)
+#define UINT8_C(c) ((uint8_t)(c##UL))
+#define UINT16_C(c) ((uint16_t)(c##UL))
+#define UINT32_C(c) ((uint32_t)(c##UL))
+#define UINT64_C(c) (c##ULL)
 
 /* Sanity check on our guess for primitive types sizes.
  * See https://barrgroup.com/Embedded-Systems/How-To/C-Fixed-Width-Integers-C99
@@ -127,10 +133,10 @@ typedef unsigned char uint8_t;
  * and include it.
  */
 typedef union {
-	char uint8_t_incorrect[sizeof(uint8_t) == 1 ? 1 : -1];
-	char uint16_t_incorrect[sizeof(uint16_t) == 2 ? 1 : -1];
-	char uint32_t_incorrect[sizeof(uint32_t) == 4 ? 1 : -1];
-	char uint64_t_incorrect[sizeof(uint64_t) == 8 ? 1 : -1];
+  char uint8_t_incorrect[sizeof(uint8_t) == 1 ? 1 : -1];
+  char uint16_t_incorrect[sizeof(uint16_t) == 2 ? 1 : -1];
+  char uint32_t_incorrect[sizeof(uint32_t) == 4 ? 1 : -1];
+  char uint64_t_incorrect[sizeof(uint64_t) == 8 ? 1 : -1];
 } check_data_types;
 
 #endif /* WITH_STDLIB */

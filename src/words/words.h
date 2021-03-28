@@ -31,9 +31,9 @@
 #define concat(file_prefix, x) _concat(file_prefix, x)
 
 #if defined(WORDSIZE)
-	/* The word size is forced by the compilation chain */
+/* The word size is forced by the compilation chain */
 #if (WORDSIZE == 16) || (WORDSIZE == 32) || (WORDSIZE == 64)
-	/* Dynamic include depending on the word size */
+/* Dynamic include depending on the word size */
 #include concat(words_, WORDSIZE)
 #else
 #error Unsupported word size concat
@@ -53,14 +53,17 @@
  * On 8-bit and 16-bit platform, we prefer to let the user decide on the best
  * option (see below)!
  */
-#if defined(__x86_64__) || defined(__i386__) || defined(__ppc64__) || defined(__ppc__) ||\
-    defined(__arm__) || defined(__aarch64__) || defined(__mips__) || defined(__s390x__) ||\
-    defined(__SH4__) || defined(__sparc__)
+
+#if defined(__x86_64__) || defined(__i386__) || defined(__ppc64__) || \
+    defined(__ppc__) || defined(__arm__) || defined(__aarch64__) ||   \
+    defined(__mips__) || defined(__s390x__) || defined(__SH4__) ||    \
+    defined(__sparc__)
 #define WORDSIZE 64
 #include "words_64.h"
 #else
 /* We let the user fix the WORDSIZE manually */
-#error "Unrecognized platform. Please specify the word size of your target (with make 16, make 32, make 64)"
+#error \
+    "Unrecognized platform. Please specify the word size of your target (with make 16, make 32, make 64)"
 #endif /* Unrecognized */
 #endif
 
@@ -95,35 +98,36 @@ typedef u16 bitcnt_t;
 #define WORD_HIGHBIT (WORD(1) << (WORD_BITS - 1))
 
 /* WORD_MUL: multiply two words using schoolbook multiplication on half words */
-#define WORD_MUL(outh, outl, in1, in2) do {				\
-	word_t in1h, in1l, in2h, in2l;					\
-	word_t tmph, tmpm, tmpl;					\
-	word_t tmpm1, tmpm2;						\
-	word_t carrym, carryl;						\
-	/* Get high and low half words. */				\
-	in1h = (in1) >> HWORD_BITS;					\
-	in1l = (in1) & HWORD_MASK;					\
-	in2h = (in2) >> HWORD_BITS;					\
-	in2l = (in2) & HWORD_MASK;					\
-	/* Compute low product. */					\
-	tmpl = in2l * in1l;						\
-	/* Compute middle product. */					\
-	tmpm1 = in2h * in1l;						\
-	tmpm2 = in2l * in1h;						\
-	tmpm = tmpm1 + tmpm2;						\
-	/* Store middle product carry. */				\
-	carrym = tmpm < tmpm1;						\
-	/* Compute full low product. */					\
-	(outl) = tmpl;							\
-	(outl) += (tmpm & HWORD_MASK) << HWORD_BITS;			\
-	/* Store full low product carry. */				\
-	carryl = (outl) < tmpl;						\
-	/* Compute full high product. */				\
-	carryl += tmpm >> HWORD_BITS;					\
-	carryl += carrym << HWORD_BITS;					\
-	tmph = in2h * in1h;						\
-	/* No carry can occur below. */					\
-	(outh) = tmph + carryl;						\
-	} while (0)
+#define WORD_MUL(outh, outl, in1, in2)           \
+  do {                                           \
+    word_t in1h, in1l, in2h, in2l;               \
+    word_t tmph, tmpm, tmpl;                     \
+    word_t tmpm1, tmpm2;                         \
+    word_t carrym, carryl;                       \
+    /* Get high and low half words. */           \
+    in1h = (in1) >> HWORD_BITS;                  \
+    in1l = (in1)&HWORD_MASK;                     \
+    in2h = (in2) >> HWORD_BITS;                  \
+    in2l = (in2)&HWORD_MASK;                     \
+    /* Compute low product. */                   \
+    tmpl = in2l * in1l;                          \
+    /* Compute middle product. */                \
+    tmpm1 = in2h * in1l;                         \
+    tmpm2 = in2l * in1h;                         \
+    tmpm = tmpm1 + tmpm2;                        \
+    /* Store middle product carry. */            \
+    carrym = tmpm < tmpm1;                       \
+    /* Compute full low product. */              \
+    (outl) = tmpl;                               \
+    (outl) += (tmpm & HWORD_MASK) << HWORD_BITS; \
+    /* Store full low product carry. */          \
+    carryl = (outl) < tmpl;                      \
+    /* Compute full high product. */             \
+    carryl += tmpm >> HWORD_BITS;                \
+    carryl += carrym << HWORD_BITS;              \
+    tmph = in2h * in1h;                          \
+    /* No carry can occur below. */              \
+    (outh) = tmph + carryl;                      \
+  } while (0)
 
 #endif /* __WORDS_H__ */

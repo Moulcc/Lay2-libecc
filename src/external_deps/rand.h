@@ -16,7 +16,6 @@
 #ifndef __RAND_H__
 #define __RAND_H__
 #include "../words/words.h"
-
 int get_random(unsigned char *buf, u16 len);
 
 #endif /* __RAND_H__ */
