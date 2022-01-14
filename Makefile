@@ -1,9 +1,29 @@
 .SUFFIXES:
 
+TARGET := riscv64-unknown-linux-gnu
+CC := $(TARGET)-gcc
+LD := $(TARGET)-gcc
+OBJCOPY := $(TARGET)-objcopy
+CFLAGS := -fPIC -O3 -nostdinc -nostdlib -nostartfiles -fvisibility=hidden -I deps/ckb-c-stdlib -I deps/ckb-c-stdlib/libc -I deps -I deps/ckb-c-stdlib/molecule -I c -I build -I deps/secp256k1/src -I deps/secp256k1 -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g
+LDFLAGS := -Wl,-static -fdata-sections -ffunction-sections -Wl,--gc-sections
+SECP256K1_SRC := deps/secp256k1/src/ecmult_static_pre_context.h
+
+CFLAGS_MBEDTLS := -fPIC -Os -fno-builtin-printf -nostdinc -nostdlib -nostartfiles -fvisibility=hidden -fdata-sections -ffunction-sections -I deps/ckb-c-stdlib -I deps/ckb-c-stdlib/molecule -I deps/ckb-c-stdlib/libc -I deps/mbedtls/include -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g
+LDFLAGS_MBEDTLS := -Wl,-static -Wl,--gc-sections
+PASSED_MBEDTLS_CFLAGS := -Os -fPIC -nostdinc -nostdlib -DCKB_DECLARATION_ONLY -I ../../ckb-c-stdlib/libc -fdata-sections -ffunction-sections
+
+CFLAGS_BLST := -fno-builtin-printf -Ideps/blst/bindings $(subst ckb-c-stdlib,ckb-c-stdlib-202106,$(CFLAGS))
+CKB_VM_CLI := ckb-vm-b-cli
+
+MOLC := moleculec
+MOLC_VERSION := 0.7.0
+
+# docker pull nervos/ckb-riscv-gnu-toolchain:gnu-bionic-20191012
+BUILDER_DOCKER := nervos/ckb-riscv-gnu-toolchain@sha256:aae8a3f79705f67d505d1f1d5ddc694a4fd537ed1c7e9622420a470d59ba2ec3
+
 # Where to put generated objects
 BUILD_DIR ?= build
 include common.mk
-
 
 # Static libraries to build
 LIBS = $(LIBARITH) $(LIBEC) $(LIBSIGN)
@@ -14,7 +34,8 @@ LIBS += $(LIBARITH_DYN) $(LIBEC_DYN) $(LIBSIGN_DYN)
 endif
 
 # Executables to build
-TESTS_EXEC = $(BUILD_DIR)/ec_self_tests $(BUILD_DIR)/ec_utils
+# TESTS_EXEC = $(BUILD_DIR)/ec_self_tests $(BUILD_DIR)/ec_utils
+TESTS_EXEC = $(BUILD_DIR)/ec_verify_once
 # We also compile executables with dynamic linking if asked to
 ifeq ($(WITH_DYNAMIC_LIBS),1)
 TESTS_EXEC += $(BUILD_DIR)/ec_self_tests_dyn $(BUILD_DIR)/ec_utils_dyn
@@ -23,8 +44,10 @@ endif
 EXEC_TO_CLEAN = $(BUILD_DIR)/ec_self_tests $(BUILD_DIR)/ec_utils $(BUILD_DIR)/ec_self_tests_dyn $(BUILD_DIR)/ec_utils_dyn
 
 # all and clean, as you might expect
-# all: depend $(LIBS) $(TESTS_EXEC)
-all: depend $(LIBS) 
+all: depend $(LIBS) $(TESTS_EXEC)
+
+all-via-docker:
+	docker run --rm -v `pwd`:/code ${BUILDER_DOCKER} bash -c "cd /code && make"
 
 clean:
 	@rm -f $(LIBS) $(EXEC_TO_CLEAN)
@@ -37,6 +60,7 @@ clean:
 # library configuration files
 
 CFG_DEPS = $(wildcard src/*.h)
+LIB_CFLAGS += -DCKB_DECLARATION_ONLY
 
 # external dependencies
 
@@ -197,21 +221,25 @@ TESTS_OBJECTS_UTILS_SRC = src/tests/ec_utils.c
 TESTS_OBJECTS_UTILS = $(patsubst %.c, %.o, $(TESTS_OBJECTS_UTILS_SRC))
 TESTS_OBJECTS_UTILS_DEPS = $(patsubst %.c, %.d, $(TESTS_OBJECTS_UTILS_SRC))
 
-$(TESTS_OBJECTS_CORE_DEPS): $(TESTS_OBJECTS_CORE_SRC) $(CFG_DEPS)
-	$(if $(filter $(wildcard src/tests/*.c), $<), @$(CC) $(LIB_CFLAGS) -MM $< -MF $@)
+# $(TESTS_OBJECTS_CORE_DEPS): $(TESTS_OBJECTS_CORE_SRC) $(CFG_DEPS)
+#	$(if $(filter $(wildcard src/tests/*.c), $<), @$(CC) $(LIB_CFLAGS) -MM $< -MF $@)
 
-$(TESTS_OBJECTS_CORE): $(TESTS_OBJECTS_CORE_SRC) $(CFG_DEPS)
-	$(if $(filter $(wildcard src/tests/*.c), $<), $(CC) $(LIB_CFLAGS) -c $< -o $@)
+# $(TESTS_OBJECTS_CORE): $(TESTS_OBJECTS_CORE_SRC) $(CFG_DEPS)
+#	$(if $(filter $(wildcard src/tests/*.c), $<), $(CC) $(LIB_CFLAGS) -c $< -o $@)
 
-src/tests/%.d:  src/tests/%.c $(CFG_DEPS)
-	$(if $(filter src/tests/ec_utils.c, $<), $(CC) $(LIB_CFLAGS) -MM $< -MF $@)
-	$(if $(filter-out src/tests/ec_utils.c, $<), $(CC) $(LIB_CFLAGS) -MM $< -MF $@)
+#src/tests/%.d:  src/tests/%.c $(CFG_DEPS)
+#	$(if $(filter src/tests/ec_utils.c, $<), $(CC) $(LIB_CFLAGS) -MM $< -MF $@)
+#	$(if $(filter-out src/tests/ec_utils.c, $<), $(CC) $(LIB_CFLAGS) -MM $< -MF $@)
 
-$(BUILD_DIR)/ec_self_tests: $(TESTS_OBJECTS_CORE) $(TESTS_OBJECTS_SELF_SRC) $(EXT_DEPS_OBJECTS) $(LIBSIGN)
-	$(CC) $(BIN_CFLAGS) $(BIN_LDFLAGS) $^ -o $@
+#$(BUILD_DIR)/ec_self_tests: $(TESTS_OBJECTS_CORE) $(TESTS_OBJECTS_SELF_SRC) $(EXT_DEPS_OBJECTS) $(LIBSIGN)
+#	$(CC) $(BIN_CFLAGS) $(BIN_LDFLAGS) $^ -o $@
 
-$(BUILD_DIR)/ec_utils: $(TESTS_OBJECTS_CORE) $(TESTS_OBJECTS_UTILS_SRC) $(EXT_DEPS_OBJECTS) $(LIBSIGN)
-	$(CC) $(BIN_CFLAGS) $(BIN_LDFLAGS) -DWITH_STDLIB  $^ -o $@
+#$(BUILD_DIR)/ec_utils: $(TESTS_OBJECTS_CORE) $(TESTS_OBJECTS_UTILS_SRC) $(EXT_DEPS_OBJECTS) $(LIBSIGN)
+#	$(CC) $(BIN_CFLAGS) $(BIN_LDFLAGS) -DWITH_STDLIB  $^ -o $@
+
+TESTS_OBJECTS_VERIFY_SRC = src/tests/ec_verify_once.c
+$(BUILD_DIR)/ec_verify_once: $(TESTS_OBJECTS_VERIFY_SRC) $(EXT_DEPS_OBJECTS) $(LIBSIGN)
+	$(CC) $(CFLAGS) $(BIN_LDFLAGS)  $^ -o $@
 
 # If the user asked for dynamic libraries, compile versions of our binaries against them
 ifeq ($(WITH_DYNAMIC_LIBS),1)
@@ -223,8 +251,12 @@ $(BUILD_DIR)/ec_utils_dyn: $(TESTS_OBJECTS_CORE) $(TESTS_OBJECTS_UTILS_SRC) $(EX
 endif
 
 
-DEPENDS = $(EXT_DEPS_DEPS) $(UTILS_ARITH_DEPS) $(UTILS_EC_DEPS) $(UTILS_SIGN_DEPS) $(NN_DEPS) $(FP_DEPS) $(CURVES_DEPS) \
+#DEPENDS = $(EXT_DEPS_DEPS) $(UTILS_ARITH_DEPS) $(UTILS_EC_DEPS) $(UTILS_SIGN_DEPS) $(NN_DEPS) $(FP_DEPS) $(CURVES_DEPS) \
 	  $(HASH_DEPS) $(SIG_DEPS) $(KEY_DEPS) $(TESTS_OBJECTS_CORE_DEPS) $(TESTS_OBJECTS_SELF_DEPS) $(TESTS_OBJECTS_UTILS_DEPS)
+
+DEPENDS = $(EXT_DEPS_DEPS) $(UTILS_ARITH_DEPS) $(UTILS_EC_DEPS) $(UTILS_SIGN_DEPS) $(NN_DEPS) $(FP_DEPS) $(CURVES_DEPS) \
+		$(HASH_DEPS) $(SIG_DEPS) $(KEY_DEPS)
+
 depend: $(DEPENDS)
 
 .PHONY: all depend clean 16 32 64 debug debug16 debug32 debug64 force_arch32 force_arch64

@@ -13,8 +13,6 @@
  *  This software is licensed under a dual BSD and GPL v2 license.
  *  See LICENSE file at the root folder of the project.
  */
-#define CKB_DECLARATION_ONLY
-
 #include "rand.h"
 
 /* Unix and compatible case (including macOS) */
