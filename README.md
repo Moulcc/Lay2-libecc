@@ -6,6 +6,10 @@ Copyright (C) 2017
 This software is licensed under a dual BSD and GPL v2 license.
 See [LICENSE](LICENSE) file at the root folder of the project.
 
+## What's new
+This project is only for secp256r1 baseline test.
+
+
 ## Authors
 
   * Ryad BENADJILA (<mailto:ryadbenadjila@gmail.com>)
